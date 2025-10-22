@@ -1,0 +1,84 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: launch-train-model
+  namespace: ml-demo
+  labels:
+    kueue.x-k8s.io/queue-name: lq-ml
+spec:
+  suspend: true
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: oc
+          image: quay.io/openshift/origin-cli:4.18
+          command: ["/bin/bash","-lc"]
+          args:
+            - |
+              set -euo pipefail
+              PR="train-model-$(date +%s)"
+              cat <<EOF | oc apply -f -
+              apiVersion: tekton.dev/v1
+              kind: PipelineRun
+              metadata:
+                name: ${PR}
+                namespace: ml-demo
+              spec:
+                pipelineRef:
+                  name: train-model
+                params:
+                  - name: GIT_URL
+                    value: "https://github.com/redhat-na-ssa/flyingthings.git"
+                  - name: GIT_REVISION
+                    value: "main"
+                  - name: GPU_TIMEOUT
+                    value: "12m"
+                  - name: NAMESPACE
+                    value: "ml-demo"
+                  - name: BATCH_SIZE
+                    value: "-1"
+                  - name: NUM_EPOCHS
+                    value: "100"
+                  - name: IMG_RESIZE
+                    value: "Y"
+                  - name: MAX_WIDTH
+                    value: "200"
+                  - name: MODEL_WEIGHTS
+                    value: "model00.pt"
+                  - name: MINIO_ENDPOINT
+                    value: "http://minio:9000"
+                  - name: DATASET_ZIP
+                    value: "cars.zip"
+                  - name: MINIO_BUCKET
+                    value: "cars"
+                  - name: MINIO_ACCESSKEY
+                    value: "minioadmin"
+                  - name: MINIO_SECRETKEY
+                    value: "minioadmin"
+                  - name: IMAGE_REGISTRY
+                    value: "image-registry.openshift-image-registry.svc:5000"
+                  - name: UBI_IMAGE
+                    value: "yolo-api:latest"
+                  - name: MODEL_BASE
+                    value: "yolov5s.pt"
+                  - name: MODEL_IMAGE
+                    value: "yolo-api:latest"
+                  - name: DEPLOY
+                    value: "Y"
+                  - name: DEPLOY_ARTIFACTS
+                    value: "Y"
+                  - name: MODEL_NAME
+                    value: "model-custom"
+                workspaces:
+                  - name: source
+                    persistentVolumeClaim:
+                      claimName: tekton-79b664864a
+                timeouts:
+                  pipeline: 24h0m0s
+              EOF
+
+              oc wait --for=condition=Succeeded=True pipelinerun/${PR} -n ml-demo --timeout=24h || {
+                oc get pipelinerun/${PR} -n ml-demo -o yaml
+                exit 1
+              }
