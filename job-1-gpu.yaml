@@ -1,0 +1,21 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: demo-gpu-1
+  namespace: ml-demo
+  labels:
+    kueue.x-k8s.io/queue-name: gpu-queue
+spec:
+  parallelism: 1
+  completions: 1
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: main
+          image: nvidia/cuda:12.3.1-base-ubuntu22.04
+          command: ["bash", "-lc", "nvidia-smi || echo 'no nvidia-smi'; sleep 20"]
+          resources:
+            limits:
+              nvidia.com/gpu: 1
+
