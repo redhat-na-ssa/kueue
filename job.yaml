@@ -1,0 +1,25 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: demo-job
+  namespace: ml-demo
+  labels:
+    kueue.x-k8s.io/queue-name: default-queue   # localqueue reference
+spec:
+  parallelism: 1
+  completions: 1
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: main
+          image: busybox
+          command: ["sh", "-c", "echo 'Running default Kueue job...'; sleep 30; echo 'Done.'"]
+          resources:
+            requests:
+              cpu: "500m"
+              memory: "256Mi"
+            limits:
+              cpu: "500m"
+              memory: "256Mi"
+
