@@ -1,0 +1,18 @@
+# clusterqueue.yaml
+apiVersion: kueue.x-k8s.io/v1beta1
+kind: ClusterQueue
+metadata:
+  name: cq-preempt
+spec:
+  namespaceSelector: {}               # allow all namespaces (including kueue-demo)
+  preemption:
+    withinClusterQueue: LowerPriority # <- key line: allow higher-priority to preempt lower
+  resourceGroups:
+    - coveredResources: ["cpu","memory"]
+      flavors:
+        - name: default-flavor
+          resources:
+            - name: "cpu"
+              nominalQuota: 2         # keep small to make preemption obvious
+            - name: "memory"
+              nominalQuota: 4Gi

@@ -1,0 +1,23 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: high-job
+  namespace: kueue-demo
+  labels:
+    kueue.x-k8s.io/queue-name: queue-b   # <-- submit to queue B
+spec:
+  template:
+    spec:
+      restartPolicy: Never
+      priorityClassName: high-priority
+      containers:
+      - name: main
+        image: busybox
+        command: ["sh","-c","echo HIGH running; sleep 30; echo done"]
+        resources:
+          requests:
+            cpu: "2"        # needs the same 2 CPUs
+            memory: "512Mi"
+          limits:
+            cpu: "2"
+            memory: "512Mi"

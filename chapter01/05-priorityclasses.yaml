@@ -1,0 +1,19 @@
+# priorityclasses.yaml
+apiVersion: scheduling.k8s.io/v1
+kind: PriorityClass
+metadata:
+  name: high-priority
+value: 1000
+preemptionPolicy: PreemptLowerPriority
+globalDefault: false
+description: "High-priority for Kueue preemption demo"
+---
+apiVersion: scheduling.k8s.io/v1
+kind: PriorityClass
+metadata:
+  name: low-priority
+value: 100
+preemptionPolicy: PreemptLowerPriority
+globalDefault: false
+description: "Low-priority for Kueue preemption demo"
+

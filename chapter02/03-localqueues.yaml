@@ -1,0 +1,16 @@
+apiVersion: kueue.x-k8s.io/v1beta1
+kind: LocalQueue
+metadata:
+  name: queue-a
+  namespace: kueue-demo
+spec:
+  clusterQueue: cq-preempt
+---
+apiVersion: kueue.x-k8s.io/v1beta1
+kind: LocalQueue
+metadata:
+  name: queue-b
+  namespace: kueue-demo
+spec:
+  clusterQueue: cq-preempt
+

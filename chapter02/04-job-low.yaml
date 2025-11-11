@@ -1,0 +1,23 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: low-job
+  namespace: kueue-demo
+  labels:
+    kueue.x-k8s.io/queue-name: queue-a   # <-- submit to queue A
+spec:
+  template:
+    spec:
+      restartPolicy: Never
+      priorityClassName: low-priority
+      containers:
+      - name: main
+        image: busybox
+        command: ["sh","-c","echo LOW running; sleep 300"]
+        resources:
+          requests:
+            cpu: "2"        # consumes the full CQ quota
+            memory: "512Mi"
+          limits:
+            cpu: "2"
+            memory: "512Mi"

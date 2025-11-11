@@ -1,0 +1,17 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  generateName: sample-job-
+  namespace: kueue-demo
+  annotations:
+    kueue.x-k8s.io/queue-name: user-queue
+spec:
+  parallelism: 1
+  completions: 1
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+      - name: echo
+        image: busybox
+        command: ["sh", "-c", "echo 'Hello from Kubernetes!'; sleep 1"]
