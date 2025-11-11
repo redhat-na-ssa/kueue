@@ -103,15 +103,18 @@ kind: ClusterQueue
 metadata:
   name: cluster-queue
 spec:
-  namespaceSelector: {}  # allows all namespaces; adjust as needed
+  namespaceSelector: {}   # allow all namespaces
   preemption:
     withinClusterQueue: LowerPriority
   resourceGroups:
-    - name: default
+    - coveredResources: ["cpu", "memory"]
       flavors:
         - name: default-flavor
-          quota:
-            min: 1000
+          resources:
+            - name: "cpu"
+              nominalQuota: 1000
+            - name: "memory"
+              nominalQuota: 256Gi
 
 ```
 
@@ -141,8 +144,8 @@ metadata:
   annotations:
     kueue.x-k8s.io/queue-name: user-queue
 spec:
-  parallelism: 3
-  completions: 3
+  parallelism: 1
+  completions: 1
   template:
     spec:
       containers:
@@ -266,3 +269,5 @@ spec:
 Check pods: oc get pods -n openshift-kueue-operator
 
 To uninstall: Remove Kueue CR → Uninstall Operator via console → Clean up resources & labels
+
+
