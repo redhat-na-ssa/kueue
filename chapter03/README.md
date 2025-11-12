@@ -11,8 +11,10 @@ oc get pods -n nvidia-gpu-operator
 oc get ds -A | grep nvidia-device-plugin
 ```
 ## 2) Verify GPUs are allocatable
-oc get nodes -o custom-columns=NAME:.metadata.name,GPUs:.status.allocatable.nvidia\.com/gpu
+```
+oc get nodes -o custom-columns='NAME:.metadata.name,GPUs:.status.allocatable.nvidia\.com/gpu'
 
+```
 
 You should see 1 (or more) for each of your two GPU nodes.
 
@@ -41,7 +43,7 @@ oc adm taint nodes $NODE_B dedicated=gpu:NoSchedule
 
 ## 4) Create ResourceFlavors for those nodes
 
-Save as rf-gpu.yaml:
+Save as 01-rf-gpu.yaml:
 ```yaml
 apiVersion: kueue.x-k8s.io/v1beta1
 kind: ResourceFlavor
@@ -58,13 +60,13 @@ spec:
 
 Apply:
 ```
-oc apply -f rf-gpu.yaml
+oc apply -f 01-rf-gpu.yaml
 ```
 ## 5) Create a ClusterQueue with GPU quota per flavor
 
 Assuming each node has 1 GPU (adjust nominalQuota if different).
 
-cq-gpu.yaml:
+02-cq-gpu.yaml:
 ```yaml
 apiVersion: kueue.x-k8s.io/v1beta1
 kind: ClusterQueue
@@ -84,7 +86,7 @@ spec:
 
 Apply:
 ```
-oc apply -f cq-gpu.yaml
+oc apply -f 02-cq-gpu.yaml
 ```
 
 Note: You can also add CPU/memory to coveredResources if you want Kueue to account them too. For many setups, only accounting GPUs is plenty—OpenShift’s default scheduler will handle CPU/mem once Kueue admits the workload and injects node affinity/tolerations.
@@ -94,7 +96,7 @@ Note: You can also add CPU/memory to coveredResources if you want Kueue to accou
 oc new-project ml-demo
 ```
 
-lq-ml-demo.yaml:
+03-lq-ml-demo.yaml:
 ```yaml
 apiVersion: kueue.x-k8s.io/v1beta1
 kind: LocalQueue
@@ -107,7 +109,7 @@ spec:
 
 Apply:
 ```
-oc apply -f lq-ml-demo.yaml
+oc apply -f 03-lq-ml-demo.yaml
 ```
 ## 7) Submit GPU Jobs (OpenShift-friendly examples)
 A) Single-GPU job (1 pod uses 1 GPU on either node)
@@ -141,11 +143,14 @@ spec:
             limits:
               nvidia.com/gpu: 1
 ~~~
+```
+oc apply -f 04-job-01.yaml
+```
 B) Two GPUs across both nodes (2 pods × 1 GPU each)
 
 If you want to consume both nodes at once, run two pods that each request a single GPU:
 
-job-gpu-2pods.yaml:
+05-job-gpu-2pods.yaml:
 ~~~yaml
 apiVersion: batch/v1
 kind: Job
@@ -168,3 +173,5 @@ spec:
             limits:
               nvidia.com/gpu: 1
 ~~~
+```
+oc apply 05-job-cpu-2pods.yaml
