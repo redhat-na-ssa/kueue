@@ -40,7 +40,10 @@ oc apply -f resourceflavor.yaml
 
 Small quota (CPU=2) so the low-priority job fully occupies it.
 
-withinClusterQueue: LowerPriority allows a higher-priority workload to preempt a lower-priority one in the same CQ. 
+```
+withinClusterQueue: LowerPriority
+``` 
+allows a higher-priority workload to preempt a lower-priority one in the same CQ. 
 Kueue
 
 clusterqueue.yaml
