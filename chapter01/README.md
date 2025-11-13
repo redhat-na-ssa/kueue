@@ -8,7 +8,6 @@ apiVersion: kueue.openshift.io/v1
 kind: Kueue
 metadata:
   name: cluster
-  namespace: openshift-kueue-operator
 spec:
   managementState: Managed
   config:
@@ -77,7 +76,7 @@ spec:
         - name: default-flavor
           resources:
             - name: "cpu"
-              nominalQuota: 1000
+              nominalQuota: 1000 # checkout what this is and what it does.
             - name: "memory"
               nominalQuota: 256Gi
 
@@ -105,7 +104,7 @@ apiVersion: batch/v1
 kind: Job
 metadata:
   generateName: sample-job-
-  namespace: team-namespace
+  namespace: kueue-demo
   annotations:
     kueue.x-k8s.io/queue-name: user-queue
 spec:

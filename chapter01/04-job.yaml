@@ -1,20 +1,19 @@
 apiVersion: batch/v1
 kind: Job
 metadata:
-  generateName: sample-job-
+  name: kueue-demo-job
   namespace: kueue-demo
-  annotations:
-    kueue.x-k8s.io/queue-name: cluster-queue
+  labels:
+    kueue.x-k8s.io/queue-name: user-queue
 spec:
-  parallelism: 3
-  completions: 3
   template:
     spec:
-      containers:
-      - name: example
-        image: registry.example/batch/calc:latest
-        args: ["30s"]
-        resources:
-          requests:
-            cpu: 1
       restartPolicy: Never
+      containers:
+        - name: main
+          image: busybox
+          command: ["sh", "-c", "echo 'Job admitted!'; sleep 15; echo 'Done.'"]
+          resources:
+            requests:
+              cpu: "1"
+              memory: "256Mi"
