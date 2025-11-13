@@ -3,7 +3,7 @@
 oc new-project kueue-demo
 
 ## 2) PriorityClasses (high vs low)
-priorityclasses.yaml
+00-priorityclasses.yaml
 ```yaml
 apiVersion: scheduling.k8s.io/v1
 kind: PriorityClass
@@ -22,10 +22,10 @@ preemptionPolicy: PreemptLowerPriority
 globalDefault: false
 ```
 ```
-oc apply -f priorityclasses.yaml
+oc apply -f 00-priorityclasses.yaml
 ```
 ## 3) ResourceFlavor (default)
-resourceflavor.yaml
+01-resourceflavor.yaml
 ```yaml
 apiVersion: kueue.x-k8s.io/v1beta1
 kind: ResourceFlavor
@@ -34,7 +34,7 @@ metadata:
 spec: {}
 ```
 ```
-oc apply -f resourceflavor.yaml
+oc apply -f 01-resourceflavor.yaml
 ```
 ## 4) One ClusterQueue (with preemption enabled)
 
@@ -46,7 +46,7 @@ withinClusterQueue: LowerPriority
 allows a higher-priority workload to preempt a lower-priority one in the same CQ. 
 Kueue
 
-clusterqueue.yaml
+02-clusterqueue.yaml
 ```yaml
 apiVersion: kueue.x-k8s.io/v1beta1
 kind: ClusterQueue
@@ -72,7 +72,7 @@ spec:
 
 ```
 ```
-oc apply -f clusterqueue.yaml
+oc apply -f 02-clusterqueue.yaml
 ```
 
 Fields withinClusterQueue, reclaimWithinCohort, and borrowWithinCohort.policy are the current v1beta1 knobs for preemption behavior. 
@@ -83,7 +83,7 @@ Kueue
 Both point to the same ClusterQueue; workloads are admitted according to CQ policy. 
 Kueue
 
-localqueues.yaml
+03-localqueues.yaml
 ```yaml
 apiVersion: kueue.x-k8s.io/v1beta1
 kind: LocalQueue
@@ -102,10 +102,10 @@ spec:
   clusterQueue: cq-preempt
 ```
 ```
-oc apply -f localqueues.yaml
+oc apply -f 03-localqueues.yaml
 ```
 ## 6) Low-priority job in Queue A (fills all quota)
-job-low.yaml
+04-job-low.yaml
 ```yaml
 apiVersion: batch/v1
 kind: Job
@@ -132,11 +132,11 @@ spec:
             memory: "512Mi"
 ```
 ```
-oc apply -f job-low.yaml
+oc apply -f 04-job-low.yaml
 oc get pods -n kueue-demo -w   # wait until low-job pod is Running
 ```
 ## 7) High-priority job in Queue B (preempts Queue A’s job)
-job-high.yaml
+05-job-high.yaml
 ```yaml
 apiVersion: batch/v1
 kind: Job
@@ -163,7 +163,7 @@ spec:
             memory: "512Mi"
 ```
 ```
-oc apply -f job-high.yaml
+oc apply -f 05-job-high.yaml
 ```
 ## 8) Watch the preemption happen
 Kueue’s view (workloads)
