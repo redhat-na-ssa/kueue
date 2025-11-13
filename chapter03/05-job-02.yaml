@@ -1,19 +1,15 @@
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: demo-gpu-1
+  name: demo-gpu-2pods
   namespace: kueue-demo
   labels:
     kueue.x-k8s.io/queue-name: gpu-queue
 spec:
-  parallelism: 1
-  completions: 1
+  parallelism: 2
+  completions: 2
   template:
     spec:
-      tolerations:  
-        - key: nvidia.com/gpu
-          operator: Exists
-          effect: NoSchedule
       restartPolicy: Never
       containers:
         - name: main

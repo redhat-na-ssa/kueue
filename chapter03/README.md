@@ -102,7 +102,7 @@ apiVersion: kueue.x-k8s.io/v1beta1
 kind: LocalQueue
 metadata:
   name: gpu-queue
-  namespace: ml-demo
+  namespace: kueue-demo
 spec:
   clusterQueue: gpu-cluster-queue
 ```
@@ -122,7 +122,7 @@ apiVersion: batch/v1
 kind: Job
 metadata:
   name: demo-gpu-1
-  namespace: ml-demo
+  namespace: kueue-demo
   labels:
     kueue.x-k8s.io/queue-name: gpu-queue
 spec:
@@ -156,7 +156,7 @@ apiVersion: batch/v1
 kind: Job
 metadata:
   name: demo-gpu-2pods
-  namespace: ml-demo
+  namespace: kueue-demo
   labels:
     kueue.x-k8s.io/queue-name: gpu-queue
 spec:
