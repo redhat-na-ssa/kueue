@@ -1,0 +1,308 @@
+# Conceptual & Architecture
+
+1. What is Kueue and how does it differ from the native Kubernetes scheduler?
+
+2. How does Kueue manage workloads across multiple queues and namespaces?
+
+3. What are the main components of Kueue (Workload, LocalQueue, ClusterQueue, ResourceFlavor, etc.) and how do they interact?
+
+4. How does Kueue integrate with batch APIs like Jobs or RayJobs?
+
+5. What’s the difference between queuing and admission in Kueue?
+
+6. How does Kueue decide which workload to admit first?
+
+7. How does Kueue handle fairness across different users or namespaces?
+
+⚙️ Configuration & Setup
+
+8. How do you install and verify Kueue on OpenShift?
+
+9. How do you define and link a LocalQueue and a ClusterQueue?
+
+10. What’s the purpose of a ResourceFlavor and how do you define node labels and tolerations for it?
+
+11. How do you configure Kueue to handle GPU nodes or other special resources?
+
+12. How does Kueue handle resource borrowing and sharing between clusters or cohorts?
+
+13. What’s the role of namespaceSelector in a ClusterQueue?
+
+14. How do you enforce quotas for CPU, memory, and GPUs across queues?
+
+15. How do you enable or disable preemption?
+
+🧩 Scheduling & Admission Behavior
+
+16. What happens when a workload is submitted and there’s no available quota?
+
+17. How does Kueue determine if a workload can be admitted to a ClusterQueue?
+
+18. What happens when a workload is evicted or preempted — does it automatically restart?
+
+19. How does Kueue handle workloads that request resources not covered by any ClusterQueue?
+
+20. Can Kueue prioritize workloads by time waiting in queue or job priority?
+
+21. How do you see which workloads are pending, running, or preempted?
+
+🔁 Fairness, Borrowing, and Sharing
+
+22. What’s a cohort in Kueue and how does it enable resource sharing?
+
+23. How do you configure borrowing limits between ClusterQueues?
+
+24. How does Kueue prevent one queue from starving others?
+
+25. Can preemption and borrowing be combined safely?
+
+26. How does Kueue reclaim resources that were borrowed when another ClusterQueue needs them back?
+
+🧱 Preemption & Priority
+
+27. How do you configure preemption between workloads of different priorities?
+
+28. What’s the difference between withinClusterQueue: LowerPriority and cohort-level preemption?
+
+29. Can Kueue preempt workloads across ClusterQueues in the same cohort?
+
+30. How do you define PriorityClasses and integrate them with Kueue?
+
+31. How do you safely test preemption without interrupting real workloads?
+
+🔍 Observability & Debugging
+
+32. How do you debug a workload that stays in suspended: true?
+
+33. How can you view which ClusterQueue or LocalQueue a workload was admitted to?
+
+34. What are the best oc or kubectl commands to inspect Kueue’s internal state?
+
+35. How do you monitor borrowing and quota usage across ClusterQueues?
+
+36. How can you export Kueue metrics to Prometheus or Grafana?
+
+37. What common validation errors occur when applying ClusterQueue YAMLs?
+
+🧠 Advanced & Integration Topics
+
+38. How does Kueue integrate with Tekton or batch pipelines in OpenShift?
+
+39. How can you use Kueue with Ray, Spark, or other distributed job types?
+
+40. What’s the best way to combine Kueue with OpenShift GPU Operators?
+
+41. How does Kueue interact with the Kubernetes Scheduler when multiple schedulers are installed?
+
+42. How do you simulate or test queueing policies (e.g., FIFO, FairShare)?
+
+43. What’s the roadmap for Kueue — is it part of Kubernetes core or a SIG project?
+
+44. How do you clean up stuck workloads or empty queues safely?
+
+
+-------------------
+
+🧠 1. Conceptual & Architecture
+
+1. What is Kueue?
+Kueue is a Kubernetes-native batch queueing system that manages admission of workloads (like Jobs, RayJobs, TFJobs) based on available cluster resources and quotas. It doesn’t replace the scheduler — it pre-schedules which workloads are allowed to run.
+
+2. Difference from default scheduler:
+The default scheduler runs everything immediately if resources exist. Kueue enforces fairness and quotas by only admitting jobs when their queues have available quota.
+
+3. Components:
+
+Workload: Internal object created from a Job.
+
+LocalQueue: Namespaced entry point where workloads wait.
+
+ClusterQueue: Global resource defining capacity and policies.
+
+ResourceFlavor: Node-specific resource pool with labels, taints, tolerations.
+
+Cohort: A group of ClusterQueues that can share/borrow resources.
+
+4. Integration:
+Kueue wraps any controller that supports suspend=true semantics — e.g., batch/v1 Job, kubeflow.org/RayJob, kubeflow.org/MPIJob.
+
+5. Queuing vs Admission:
+When a job is submitted, it’s queued (suspended). When capacity is available, it’s admitted — Kueue unsuspends it and injects node-affinity/tolerations.
+
+6. Admission order:
+By default, Strict FIFO: earliest workloads get priority. You can also configure Fair Share or PriorityClass influence.
+
+7. Fairness across users:
+Kueue uses ClusterQueue quotas, cohorts, and borrowing limits to ensure each team or namespace gets predictable shares.
+
+⚙️ 2. Configuration & Setup
+
+8. Install on OpenShift:
+Use the OperatorHub “Kueue Operator” or:
+
+oc apply -f https://github.com/kubernetes-sigs/kueue/releases/download/<version>/manifests.yaml
+
+
+Then verify pods in kueue-system namespace.
+
+9. LocalQueue → ClusterQueue:
+Each LocalQueue has spec.clusterQueue: <name> mapping it to one global ClusterQueue.
+
+10. ResourceFlavor:
+Defines where workloads may run:
+
+spec:
+  nodeLabels:
+    gpu: node-a
+  taints:
+    - key: dedicated
+      operator: Equal
+      value: gpu
+      effect: NoSchedule
+
+
+11. GPUs:
+Use nvidia.com/gpu in coveredResources, define GPU flavors per node or model.
+
+12. Resource sharing:
+Use a shared cohort across ClusterQueues; configure borrowingLimit for how much can be borrowed.
+
+13. namespaceSelector:
+Determines which namespaces’ LocalQueues can attach — {} means “all namespaces.”
+
+14. Enforcing quotas:
+Define nominalQuota per resource per flavor.
+
+15. Preemption:
+Enabled in ClusterQueue:
+
+preemption:
+  withinClusterQueue: LowerPriority
+
+
+and controlled by PriorityClasses.
+
+🧩 3. Scheduling & Admission Behavior
+
+16. No quota:
+Workload remains suspended: true (Pending). It will be admitted later when quota frees.
+
+17. Admission check:
+Kueue compares workload requests with ClusterQueue’s available quota and flavor match (node labels & taints).
+
+18. Eviction / preemption:
+Evicted workloads are re-queued automatically (Kueue sets them back to suspend=true).
+
+19. Resource mismatch:
+If a Job requests a resource not listed under coveredResources, it won’t be admitted.
+
+20. Priority and time:
+Kueue supports PriorityClass; FIFO is default for same priority.
+
+21. Observe states:
+
+oc get workloads -A
+oc describe workload -n <ns> <name>
+
+🔁 4. Fairness, Borrowing & Sharing
+
+22. Cohort:
+A logical group of ClusterQueues that share unused quota (e.g., “gpu-pool”).
+
+23. Borrowing limits:
+Each CQ can exceed its nominalQuota up to borrowingLimit, using idle quota from its cohort peers.
+
+24. Starvation prevention:
+Once another CQ needs its nominal quota, borrowed capacity is reclaimed or further admissions stop.
+
+25. Borrow + preempt:
+Yes; borrowed workloads can be preempted when the lending queue needs its resources.
+
+26. Reclaiming resources:
+When a CQ’s workloads consume beyond nominal quota and another queue in the cohort requests capacity, new admissions stop for borrowers, and optionally preemption removes borrowed work.
+
+🧱 5. Preemption & Priority
+
+27. Configuration:
+Priority comes from Kubernetes PriorityClass; Kueue honors it when withinClusterQueue: LowerPriority.
+
+28. withinClusterQueue vs cohort-level:
+
+withinClusterQueue → preemption inside the same CQ.
+
+Cohort-level → preemption across CQs in the same cohort.
+
+29. Cross-CQ preemption:
+Possible when CQs share a cohort and borrowing occurs.
+
+30. Defining PriorityClasses:
+
+apiVersion: scheduling.k8s.io/v1
+kind: PriorityClass
+metadata:
+  name: high
+value: 1000
+preemptionPolicy: PreemptLowerPriority
+
+
+31. Testing safely:
+Create a small CQ (2 CPUs), run a long low-priority job, then submit a short high-priority job → preemption triggers visibly.
+
+🔍 6. Observability & Debugging
+
+32. Suspended workload:
+Normal until admitted. Check with:
+
+oc describe workload -n <ns> <workload>
+
+
+Common reasons: no quota, resource mismatch, or namespaceSelector exclusion.
+
+33. View admission:
+oc get workloads -A -o wide shows CLUSTERQUEUE and ADMITTED columns.
+
+34. Inspect Kueue state:
+
+oc get clusterqueues
+oc describe clusterqueue <name>
+
+
+35. Borrowing/quota metrics:
+oc describe clusterqueue lists used, nominal, and borrowed quotas.
+
+36. Prometheus metrics:
+Enable metrics service in kueue-system, scrape /metrics endpoint (provides queue depth, admitted workloads, etc.).
+
+37. Common YAML errors:
+
+Wrong field names (quota: vs resources:).
+
+Invalid whenCanPreempt value (only Preempt or TryNextFlavor).
+
+Changing immutable fields (like spec.clusterQueue on LocalQueue).
+
+🧠 7. Advanced & Integration Topics
+
+38. Tekton / CI pipelines:
+Kueue can manage Tekton tasks by wrapping each pipeline run in a Job-like CRD that uses suspend and the queue label.
+
+39. Ray / Spark integration:
+RayJob and SparkApplication controllers have Kueue adapters; Kueue controls admission, then the job controllers launch workers.
+
+40. OpenShift GPU Operator:
+Device plugin exposes nvidia.com/gpu allocatable; define GPU flavors targeting those nodes.
+
+41. Multiple schedulers:
+Kueue only decides admission; actual scheduling still uses the default Kubernetes scheduler (no conflict).
+
+42. Simulate policies:
+Use test jobs with different CPU requests and PriorityClasses; observe FIFO or preemption order.
+
+43. Roadmap:
+Kueue is a Kubernetes SIG-Scheduling subproject; graduated to beta in 2024, aiming for GA in 2025.
+
+44. Cleanup:
+Delete workloads or Jobs, then remove empty LocalQueues:
+
+oc delete workload -n <ns> --all
+oc delete localqueue <name> -n <ns>
